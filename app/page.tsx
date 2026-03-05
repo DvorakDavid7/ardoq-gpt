@@ -5,6 +5,8 @@ import { DefaultChatTransport } from "ai";
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { ArrowUp } from "lucide-react";
+import Markdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 export default function Home() {
   const { messages, sendMessage, status } = useChat({
@@ -55,15 +57,56 @@ export default function Home() {
                   </div>
                 )}
                 <div
-                  className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
+                  className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
                     m.role === "user"
-                      ? "bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 rounded-br-sm"
+                      ? "bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 rounded-br-sm whitespace-pre-wrap"
                       : "bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 rounded-bl-sm"
                   }`}
                 >
                   {m.parts.map((part, i) => {
                     if (part.type === "text") {
-                      return <span key={i}>{part.text}</span>;
+                      if (m.role === "user") return <span key={i}>{part.text}</span>;
+                      return (
+                        <Markdown
+                          key={i}
+                          remarkPlugins={[remarkGfm]}
+                          components={{
+                            h1: ({ children }) => <h1 className="text-lg font-bold mt-4 mb-2">{children}</h1>,
+                            h2: ({ children }) => <h2 className="text-base font-bold mt-3 mb-1">{children}</h2>,
+                            h3: ({ children }) => <h3 className="text-sm font-semibold mt-2 mb-1">{children}</h3>,
+                            p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+                            ul: ({ children }) => <ul className="list-disc pl-4 mb-2 space-y-0.5">{children}</ul>,
+                            ol: ({ children }) => <ol className="list-decimal pl-4 mb-2 space-y-0.5">{children}</ol>,
+                            code: ({ className, children, ...props }) => {
+                              const isBlock = className?.includes("language-");
+                              return isBlock ? (
+                                <code className="block bg-zinc-200 dark:bg-zinc-700 rounded p-3 my-2 text-xs font-mono overflow-x-auto whitespace-pre" {...props}>
+                                  {children}
+                                </code>
+                              ) : (
+                                <code className="bg-zinc-200 dark:bg-zinc-700 rounded px-1 py-0.5 text-xs font-mono" {...props}>
+                                  {children}
+                                </code>
+                              );
+                            },
+                            pre: ({ children }) => <pre className="not-prose">{children}</pre>,
+                            a: ({ children, href }) => <a href={href} className="underline hover:opacity-75" target="_blank" rel="noopener noreferrer">{children}</a>,
+                            strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+                            blockquote: ({ children }) => <blockquote className="border-l-2 border-zinc-400 pl-3 italic my-2">{children}</blockquote>,
+                            table: ({ children }) => (
+                              <div className="my-3 overflow-x-auto">
+                                <table className="w-full border-collapse text-xs">{children}</table>
+                              </div>
+                            ),
+                            thead: ({ children }) => <thead className="bg-zinc-200 dark:bg-zinc-700">{children}</thead>,
+                            th: ({ children }) => <th className="px-3 py-2 text-left font-semibold border border-zinc-300 dark:border-zinc-600">{children}</th>,
+                            td: ({ children }) => <td className="px-3 py-2 border border-zinc-300 dark:border-zinc-600">{children}</td>,
+                            tr: ({ children }) => <tr className="even:bg-zinc-50 dark:even:bg-zinc-800/50">{children}</tr>,
+                          }}
+                        >
+                          {part.text}
+                        </Markdown>
+                      );
                     }
                     return null;
                   })}
