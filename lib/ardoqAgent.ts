@@ -7,9 +7,6 @@ import { convertToModelMessages, generateText, stepCountIs, streamText, UIMessag
 const SYSTEM_PROMPT =
     "You are an assistant with access to the Ardoq architecture repository. Use the available tools to answer questions about the architecture. When showing architecture diagrams, include a Mermaid diagram in a ```mermaid code block."
 
-const PROVIDER_OPTIONS = {
-    anthropic: { cacheControl: { type: "ephemeral" } },
-}
 
 async function createMcp() {
     return createMCPClient({
@@ -30,9 +27,24 @@ async function createMcp() {
     })
 }
 
+function withCacheControl(tools: Record<string, object>) {
+    const keys = Object.keys(tools)
+    if (keys.length === 0) return tools
+    const lastKey = keys[keys.length - 1]
+    return {
+        ...tools,
+        [lastKey]: {
+            ...tools[lastKey],
+            experimental_providerMetadata: {
+                anthropic: { cacheControl: { type: "ephemeral" } },
+            },
+        },
+    }
+}
+
 export async function createArdoqAgent() {
     const mcp = await createMcp()
-    const tools = await mcp.tools()
+    const tools = withCacheControl(await mcp.tools())
 
     return {
         async run(prompt: string) {
@@ -43,19 +55,17 @@ export async function createArdoqAgent() {
                 tools,
                 stopWhen: stepCountIs(10),
                 maxRetries: 3,
-                providerOptions: PROVIDER_OPTIONS,
             })
         },
 
         async stream(messages: UIMessage[]) {
             return streamText({
-                model: anthropic("claude-sonnet-4-6"),
+                model: anthropic("claude-haiku-4-5-20251001"),
                 system: SYSTEM_PROMPT,
                 messages: await convertToModelMessages(messages),
                 tools,
                 stopWhen: stepCountIs(10),
                 maxRetries: 3,
-                providerOptions: PROVIDER_OPTIONS,
                 onFinish: async () => {
                     await mcp.close()
                 },

@@ -2,11 +2,14 @@
 
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { ArrowUp } from "lucide-react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import dynamic from "next/dynamic";
+
+const MermaidDiagram = dynamic(() => import("@/components/MermaidDiagram"), { ssr: false });
 
 export default function Home() {
   const { messages, sendMessage, status } = useChat({
@@ -35,6 +38,43 @@ export default function Home() {
       formRef.current?.requestSubmit();
     }
   }
+
+  const markdownComponents = useMemo(() => ({
+    h1: ({ children }: React.PropsWithChildren) => <h1 className="text-lg font-bold mt-4 mb-2">{children}</h1>,
+    h2: ({ children }: React.PropsWithChildren) => <h2 className="text-base font-bold mt-3 mb-1">{children}</h2>,
+    h3: ({ children }: React.PropsWithChildren) => <h3 className="text-sm font-semibold mt-2 mb-1">{children}</h3>,
+    p: ({ children }: React.PropsWithChildren) => <p className="mb-2 last:mb-0">{children}</p>,
+    ul: ({ children }: React.PropsWithChildren) => <ul className="list-disc pl-4 mb-2 space-y-0.5">{children}</ul>,
+    ol: ({ children }: React.PropsWithChildren) => <ol className="list-decimal pl-4 mb-2 space-y-0.5">{children}</ol>,
+    code: ({ className, children, ...props }: React.HTMLAttributes<HTMLElement>) => {
+      if (className === "language-mermaid") {
+        return <MermaidDiagram chart={String(children)} />;
+      }
+      const isBlock = className?.includes("language-");
+      return isBlock ? (
+        <code className="block bg-zinc-200 dark:bg-zinc-700 rounded p-3 my-2 text-xs font-mono overflow-x-auto whitespace-pre" {...props}>
+          {children}
+        </code>
+      ) : (
+        <code className="bg-zinc-200 dark:bg-zinc-700 rounded px-1 py-0.5 text-xs font-mono" {...props}>
+          {children}
+        </code>
+      );
+    },
+    pre: ({ children }: React.PropsWithChildren) => <pre className="not-prose">{children}</pre>,
+    a: ({ children, href }: React.AnchorHTMLAttributes<HTMLAnchorElement>) => <a href={href} className="underline hover:opacity-75" target="_blank" rel="noopener noreferrer">{children}</a>,
+    strong: ({ children }: React.PropsWithChildren) => <strong className="font-semibold">{children}</strong>,
+    blockquote: ({ children }: React.PropsWithChildren) => <blockquote className="border-l-2 border-zinc-400 pl-3 italic my-2">{children}</blockquote>,
+    table: ({ children }: React.PropsWithChildren) => (
+      <div className="my-3 overflow-x-auto">
+        <table className="w-full border-collapse text-xs">{children}</table>
+      </div>
+    ),
+    thead: ({ children }: React.PropsWithChildren) => <thead className="bg-zinc-200 dark:bg-zinc-700">{children}</thead>,
+    th: ({ children }: React.PropsWithChildren) => <th className="px-3 py-2 text-left font-semibold border border-zinc-300 dark:border-zinc-600">{children}</th>,
+    td: ({ children }: React.PropsWithChildren) => <td className="px-3 py-2 border border-zinc-300 dark:border-zinc-600">{children}</td>,
+    tr: ({ children }: React.PropsWithChildren) => <tr className="even:bg-zinc-50 dark:even:bg-zinc-800/50">{children}</tr>,
+  }), []);
 
   return (
     <div className="flex h-screen flex-col bg-white dark:bg-zinc-900">
@@ -70,39 +110,7 @@ export default function Home() {
                         <Markdown
                           key={i}
                           remarkPlugins={[remarkGfm]}
-                          components={{
-                            h1: ({ children }) => <h1 className="text-lg font-bold mt-4 mb-2">{children}</h1>,
-                            h2: ({ children }) => <h2 className="text-base font-bold mt-3 mb-1">{children}</h2>,
-                            h3: ({ children }) => <h3 className="text-sm font-semibold mt-2 mb-1">{children}</h3>,
-                            p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
-                            ul: ({ children }) => <ul className="list-disc pl-4 mb-2 space-y-0.5">{children}</ul>,
-                            ol: ({ children }) => <ol className="list-decimal pl-4 mb-2 space-y-0.5">{children}</ol>,
-                            code: ({ className, children, ...props }) => {
-                              const isBlock = className?.includes("language-");
-                              return isBlock ? (
-                                <code className="block bg-zinc-200 dark:bg-zinc-700 rounded p-3 my-2 text-xs font-mono overflow-x-auto whitespace-pre" {...props}>
-                                  {children}
-                                </code>
-                              ) : (
-                                <code className="bg-zinc-200 dark:bg-zinc-700 rounded px-1 py-0.5 text-xs font-mono" {...props}>
-                                  {children}
-                                </code>
-                              );
-                            },
-                            pre: ({ children }) => <pre className="not-prose">{children}</pre>,
-                            a: ({ children, href }) => <a href={href} className="underline hover:opacity-75" target="_blank" rel="noopener noreferrer">{children}</a>,
-                            strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
-                            blockquote: ({ children }) => <blockquote className="border-l-2 border-zinc-400 pl-3 italic my-2">{children}</blockquote>,
-                            table: ({ children }) => (
-                              <div className="my-3 overflow-x-auto">
-                                <table className="w-full border-collapse text-xs">{children}</table>
-                              </div>
-                            ),
-                            thead: ({ children }) => <thead className="bg-zinc-200 dark:bg-zinc-700">{children}</thead>,
-                            th: ({ children }) => <th className="px-3 py-2 text-left font-semibold border border-zinc-300 dark:border-zinc-600">{children}</th>,
-                            td: ({ children }) => <td className="px-3 py-2 border border-zinc-300 dark:border-zinc-600">{children}</td>,
-                            tr: ({ children }) => <tr className="even:bg-zinc-50 dark:even:bg-zinc-800/50">{children}</tr>,
-                          }}
+                          components={markdownComponents}
                         >
                           {part.text}
                         </Markdown>
